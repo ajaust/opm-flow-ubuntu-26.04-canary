@@ -1,8 +1,9 @@
 # OPM Flow Ubuntu 26.04 canary
 
 Daily (04:00 UTC) and manual GitHub Action that installs OPM Flow from
-`ppa:opm/ppa` in an `ubuntu:26.04` container. It runs twice: with the apt
-default, and with `APT::Architecture-Variants "amd64v3"` enabled.
+`ppa:opm/ppa` in on GitHub's `ubuntu-latest` runner image (which currently
+points to Ubuntu 26.04). It runs twice: with the apt default, and with
+`APT::Architecture-Variants "amd64v3"` enabled.
 
 Each run reports `flow --version`, the package version, and whether the `amd64`
 or `amd64v3` variant was installed in the job summary. The job fails if the
