@@ -20,6 +20,13 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
 
     steps:
+      - name: Show runner image and apt architecture variant config
+        run: |
+          grep -E '^(PRETTY_NAME|VERSION)=' /etc/os-release
+          echo "ImageVersion: ${ImageVersion:-unknown}"
+          grep -rn "Architecture-Variants" /etc/apt || echo "no Architecture-Variants file in /etc/apt"
+          apt-config dump | grep -i variant || true
+
       - name: Install OPM Flow from the OPM PPA
         run: |
           set -e
