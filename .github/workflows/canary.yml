@@ -1,0 +1,72 @@
+name: OPM Flow canary (Ubuntu 26.04)
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_OPM_VERSION: "2026.04" # minimum acceptable year.month
+
+jobs:
+  canary:
+    name: Install OPM Flow (variants=${{ matrix.variants || 'apt default' }})
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # "" keeps the apt default, amd64v3 opts in to the optimised packages
+        variants: ["", "amd64v3"]
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      VARIANTS: ${{ matrix.variants }}
+
+    steps:
+      - name: Enable architecture variant
+        if: matrix.variants != ''
+        run: |
+          echo "APT::Architecture-Variants \"$VARIANTS\";" > /etc/apt/apt.conf.d/99enable-variant
+
+      - name: Install OPM Flow from the OPM PPA
+        run: |
+          set -e
+          apt-get update
+          apt-get install -y software-properties-common ca-certificates
+          apt-add-repository -y ppa:opm/ppa
+          apt-get update
+          apt-get install -y mpi-default-bin libopm-simulators-bin python3-opm-common
+
+      - name: Report and check installed version
+        run: |
+          set -e
+          PKG=libopm-simulators-bin
+          POLICY=$(apt-cache policy $PKG)
+          ARCH=$(dpkg-query -W -f='${Architecture}' $PKG)
+          VARIANT=$(dpkg -s $PKG | sed -n 's/^Architecture-Variant: //p')
+          VARIANT=${VARIANT:-none (plain amd64)}
+          PKG_VERSION=$(dpkg-query -W -f='${Version}' $PKG)
+          FLOW_VERSION=$(flow --version)
+          CONFIGURED=$(apt-config dump | grep -i 'Architecture-Variants' || echo "not set (apt default)")
+          {
+            echo "### OPM Flow canary (variants: ${VARIANTS:-apt default})"
+            echo "- flow --version: \`$FLOW_VERSION\`"
+            echo "- package version: \`$PKG_VERSION\`"
+            echo "- dpkg architecture: \`$ARCH\`"
+            echo "- **installed variant: \`$VARIANT\`**"
+            echo "- apt config: \`$CONFIGURED\`"
+            echo '```'
+            echo "$POLICY"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          # Compare year.month of the package version against the expectation
+          INSTALLED=$(echo "$PKG_VERSION" | grep -oE '^[0-9]{4}\.[0-9]{2}' || true)
+          if [ -z "$INSTALLED" ] || [ "$(printf '%s\n%s\n' "$EXPECTED_OPM_VERSION" "$INSTALLED" | sort -V | head -n1)" != "$EXPECTED_OPM_VERSION" ]; then
+            echo "::error::Installed OPM Flow $PKG_VERSION (variant: $VARIANT) is older than expected $EXPECTED_OPM_VERSION"
+            exit 1
+          fi
