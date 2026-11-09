@@ -13,32 +13,21 @@ env:
 
 jobs:
   canary:
-    name: Install OPM Flow (variants=${{ matrix.variants || 'apt default' }})
+    name: Install OPM Flow
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        # "" keeps the apt default, amd64v3 opts in to the optimised packages
-        variants: ["", "amd64v3"]
     env:
       DEBIAN_FRONTEND: noninteractive
-      VARIANTS: ${{ matrix.variants }}
 
     steps:
-      - name: Enable architecture variant
-        if: matrix.variants != ''
-        run: |
-          echo "APT::Architecture-Variants \"$VARIANTS\";" > /etc/apt/apt.conf.d/99enable-variant
-
       - name: Install OPM Flow from the OPM PPA
         run: |
           set -e
-          apt-get update
-          apt-get install -y software-properties-common ca-certificates
-          apt-add-repository -y ppa:opm/ppa
-          apt-get update
-          apt-get install -y mpi-default-bin libopm-simulators-bin python3-opm-common
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common ca-certificates
+          sudo apt-add-repository -y ppa:opm/ppa
+          sudo apt-get update
+          sudo apt-get install -y mpi-default-bin libopm-simulators-bin python3-opm-common
 
       - name: Report and check installed version
         run: |
@@ -52,7 +41,7 @@ jobs:
           FLOW_VERSION=$(flow --version)
           CONFIGURED=$(apt-config dump | grep -i 'Architecture-Variants' || echo "not set (apt default)")
           {
-            echo "### OPM Flow canary (variants: ${VARIANTS:-apt default})"
+            echo "### OPM Flow canary"
             echo "- flow --version: \`$FLOW_VERSION\`"
             echo "- package version: \`$PKG_VERSION\`"
             echo "- dpkg architecture: \`$ARCH\`"
