@@ -33,6 +33,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y software-properties-common ca-certificates
           sudo apt-add-repository -y ppa:opm/ppa
+          # Launchpad advertises an empty amd64v3 index for the PPA (LP#2127888)
+          for f in /etc/apt/sources.list.d/*.sources; do
+            if grep -q '^URIs:.*ppa.launchpadcontent.net/opm/ppa' "$f"; then
+              sudo sed -i '/^URIs:.*opm\/ppa/a Architectures: amd64' "$f"
+            fi
+          done
           sudo apt-get update
           sudo apt-get install -y mpi-default-bin libopm-simulators-bin python3-opm-common
 
