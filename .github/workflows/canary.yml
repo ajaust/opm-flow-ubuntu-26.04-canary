@@ -2,7 +2,7 @@ name: OPM Flow canary (Ubuntu 26.04)
 
 on:
   schedule:
-    - cron: "0 4 * * *" # 04:00 UTC
+    - cron: "17 4 * * *" # 04:17 UTC
   workflow_dispatch:
   push:
     branches:
