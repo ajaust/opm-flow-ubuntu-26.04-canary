@@ -16,11 +16,16 @@ env:
 
 jobs:
   canary:
-    name: Install OPM Flow
+    name: Install OPM Flow (amd64v3 workaround=${{ matrix.amd64v3_workaround }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        amd64v3_workaround: [false, true]
     env:
       DEBIAN_FRONTEND: noninteractive
+      AMD64V3_WORKAROUND: ${{ matrix.amd64v3_workaround }}
 
     steps:
       - name: Show runner image and apt architecture variant config
@@ -36,6 +41,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y software-properties-common ca-certificates
           sudo apt-add-repository -y ppa:opm/ppa
+          if [ "$AMD64V3_WORKAROUND" = "true" ]; then
+            # Launchpad advertises an empty amd64v3 index for the PPA (LP#2127888)
+            for f in /etc/apt/sources.list.d/*.sources; do
+              if grep -q '^URIs:.*ppa.launchpadcontent.net/opm/ppa' "$f"; then
+                sudo sed -i '/^URIs:.*opm\/ppa/a Architectures: amd64' "$f"
+              fi
+            done
+          fi
           sudo apt-get update
           sudo apt-get install -y mpi-default-bin libopm-simulators-bin python3-opm-common
 
@@ -51,7 +64,7 @@ jobs:
           FLOW_VERSION=$(flow --version)
           CONFIGURED=$(apt-config dump | grep -i 'Architecture-Variants' || echo "not set (apt default)")
           {
-            echo "### OPM Flow canary"
+            echo "### OPM Flow canary (amd64 workaround: $AMD64V3_WORKAROUND)"
             echo "- flow --version: \`$FLOW_VERSION\`"
             echo "- package version: \`$PKG_VERSION\`"
             echo "- dpkg architecture: \`$ARCH\`"
